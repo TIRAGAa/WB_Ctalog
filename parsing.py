@@ -1,6 +1,9 @@
-# import requests
-import json
+import os
+import requests
 import pandas as pd
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_link(type: str, id: int) -> str:
@@ -21,26 +24,18 @@ def conv_utf8(text: str) -> str:
 
 def get_data_from_wildberries(query: str):
     """Получение данных с Wildberries по заданному запросу."""
-    url = f"https://www.wildberries.ru/__internal/u-search/exactmatch/ru/common/v18/search?ab_testing=false&appType=1&curr=rub&dest=-1257786&hide_dtype=9&hide_vflags=4294967296&inheritFilters=false&lang=ru&query={conv_utf8(query)}&resultset=catalog&sort=popular&spp=30&suppressSpellcheck=false"
+    url = f"{os.getenv('URL_BF')}{conv_utf8(query)}{os.getenv("URL_AF")}"
     headers = {
-        "User-Agent": "0",
-        "Authorization": "0",
-        "Cookie": "0",
-        "X-API-Key": "0",
-        "Accept": "*/*",
-        "Content-Type": "0"
-        }
+        "Cookie": os.getenv('COOKIE'),
+        "Accept": os.getenv('ACCEPT'),
+        "User-Agent": os.getenv('USER_AGENT')
+    }
     response = requests.get(url=url, headers=headers)
-    print(response.status_code)
-    print(response.url)
-    return response
+    return response.json()
 
 
-def get_catalog():
-    """Чтение данных из локального JSON файла."""
-    with open("detal.json", "r", encoding="utf-8") as file:
-        data = json.load(file)
-
+def get_catalog(data):
+    """Изьятие нужных данных из JSON"""
     results = []
     for product in data['products']:
         info_item = {
@@ -59,13 +54,12 @@ def get_catalog():
 
 
 if __name__ == "__main__":
-    # sample_query = "пальто из натуральной шерсти"
-    # data = get_data_from_wildberries(sample_query)
-    data = get_catalog()
+    sample_query = "пальто из натуральной шерсти"
+    data = get_catalog(get_data_from_wildberries(sample_query))
     df = pd.DataFrame(data)
 
     try:
-        with pd.ExcelWriter('товары.xlsx') as writer:
+        with pd.ExcelWriter('catalog.xlsx') as writer:
             df.to_excel(writer, sheet_name='Каталог', index=False)
         print("Данные сохранены в 'catalog.xlsx'")
     except Exception as e:
